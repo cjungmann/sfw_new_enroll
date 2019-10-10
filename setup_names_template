@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+# Fill in the blank variable names (Domain is optional),
+# then rename (or sym-copy) to 'setup_names'.
+
+# MySQL Database Name:
+# Example: DBase=SFW_Enroll
+DBase=
+
+# Base of application name.
+# For Apache, config file name is "sfw_${AppName}.conf,
+# and in config file, ServerName is "sfw_${AppName}"
+# Example: AppName=enroll
+AppName=
+
+# Used in config file for DirectoryIndex value:
+# The default value is a good choice, but may be changed.
+DirIndex=Login.srm
+
+# If set, this will be a ServerAlias value in the
+# config file in the form "${AppName}.${Domain}"
+# Example: Domain=domain.com
+Domain=
+
+    

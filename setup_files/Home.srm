@@ -1,0 +1,31 @@
+$database            : SFW_Enroll2
+$xml-stylesheet      : default.xsl
+$default-mode        : page
+
+$session-type        : identity
+$test_authorized     : App_Session_Confirm
+$jump-not-authorized : Login.srm
+
+page
+   type         : form-page
+   procedure    : App_User_Home
+   title        : User Home Page
+   autoload_tag : page
+   result : 1
+      name : user
+   result : 2
+      name : admin_targets
+      row-name : target
+
+profile
+   type         : form-page
+   procedure    : App_User_Profile_Values
+   form-action  : ?profile_submit
+   title        : User Profile
+   autoload_tag : page
+   schema
+
+profile_submit
+   type   : form-submit
+   procedure : App_User_Profile_Update
+   

@@ -1,0 +1,153 @@
+#!/usr/bin/env bash
+
+source bash_mysql
+source bash_utils
+
+UserAcct="$USER"
+if is_root; then
+    UserAcct="${SUDO_USER}"
+fi
+
+get_srm_top()
+{
+    echo "\$database            : ${DBase}"
+    echo "\$xml-stylesheet      : default.xsl"
+    echo "\$default-mode        : list"
+    echo
+    echo "\$session-type        : identity"
+    echo "\$test_authorized     : App_Session_Confirm"
+    echo "\$jump-not-authorized : Login.srm"
+}
+
+run_mysql_scripts()
+{
+    local prefix="$1"
+    local -a scripts
+    local fname
+
+    cd setup_files
+    scripts=( $( ls -1 | grep "${prefix}_" - ) )
+
+    for fname in "${scripts[@]}"; do
+        mysql "${DBase}" < "$fname"
+        if [ $? -ne 0 ]; then
+            cecho "Script error detected in 'setup_files/$fname'" red
+            cd ..
+            exit 1
+        fi
+    done
+
+    cd ..
+}
+
+setup_mysql_stuff()
+{
+    if ! database_exists "$DBase"; then
+        cecho "Creating database '${DBase}'"
+        mysql -e "CREATE DATABASE ${DBase}"
+        if [ $? -eq 0 ]; then
+            mysql -f "${DBase}" < /usr/local/lib/SchemaServer/install/sys_procs.sql
+            if [ $? -ne 0 ]; then
+                cecho "Failure detected in sys_procs.sql." red
+                exit 1
+            fi
+        else
+            cecho "Failed to create database '$DBase'" red
+        fi
+    fi
+
+    run_mysql_scripts "tables"
+
+    gensfw_session_procs "$DBase" "Session_Info" > setup_files/procs_0_session_generated.sql
+
+    run_mysql_scripts "procs"
+}
+
+copy_site_files()
+{
+    cd site
+    cecho "Copying htm and srm files to the site directory." green
+    cp -pf -s ../setup_files/*.htm .
+    cp -pf -s ../setup_files/*.srm .
+    cd ..
+}
+
+use_xmllint() { which xmllint 1> /dev/null; }
+
+setup_stylesheet()
+{
+    local spath="$1"
+    if use_xmllint; then
+        xsltproc setup_default.xsl "$spath" | xmllint --format -
+    else
+        xsltproc setup_default.xsl "$spath"
+    fi
+}
+
+setup_site()
+{
+    if ! [ -d "site" ]; then
+        cecho "Creating directory 'site." green
+        mkdir "site"
+
+        # Must be in directory where the link is to be installed:
+        cd site
+        ln -s /usr/local/lib/schemafw/web_includes includes
+        cd ..
+    fi
+
+    setup_stylesheet /usr/local/lib/schemafw/default.xsl > site/default.xsl
+    setup_stylesheet /usr/local/lib/schemafw/jump.xsl > site/jump.xsl
+
+    copy_site_files
+
+    if is_root; then
+        chown -R -h "$SUDO_USER:$SUDO_USER" site
+    fi
+}
+
+
+uninstall()
+{
+    if database_exists "$DBase"; then
+        cecho "Dropping database '${DBase}'" green
+        mysql -e "DROP DATABASE ${DBase}"
+    else
+        cecho "Database '$DBase' does not exist.  No action taken." red
+    fi
+
+    if [ -d "site" ]; then
+        cecho "Removing directory 'site.'" green
+        rm -fr "site"
+    fi
+
+    ./setup_apache uninstall
+}
+
+
+##########################
+# Execution begins here: #
+##########################
+
+# The 'set -a' option is necessary for the variables to be accessible
+set -a
+source setup_names
+set +a
+
+if [ "$1" = "uninstall" ]; then
+    uninstall
+    exit 0
+fi
+
+
+confirm_randstr_installed
+confirm_case_insensitive_collation
+
+# Certain setup names must be set to continue:
+confirm_setup_names
+
+setup_mysql_stuff
+setup_site
+./setup_apache
+
+

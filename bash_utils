@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+
+is_root() { [ "$USER" == "root" ]; }
+
+set_text_background()
+{
+    case "$1" in
+        default) echo -n "[49m" ;;
+        black)   echo -n "[40m" ;;
+        red)     echo -n "[41m" ;;
+        green)   echo -n "[42m" ;;
+        brown)   echo -n "[43m" ;;
+        yellow)  echo -n "[43m" ;;
+        blue)    echo -n "[44m" ;;
+        magenta) echo -n "[45m" ;;
+        cyan)    echo -n "[46m" ;;
+        white)   echo -n "[47m" ;;
+    esac
+}
+
+set_text_foreground()
+{
+    case "$1" in
+        black)   echo -n "[30m"   ;;
+        grey)    echo -n "[1;30m" ;;
+        red)     echo -n "[1;31m" ;;
+        green)   echo -n "[1;32m" ;;
+        brown)   echo -n "[2;33m" ;;
+        yellow)  echo -n "[1;33m" ;;
+        blue)    echo -n "[1;34m" ;;
+        magenta) echo -n "[1;35m" ;;
+        cyan)    echo -n "[1;36m" ;;
+        white)   echo -n "[1;37m" ;;
+    esac
+}
+
+
+cecho()
+{
+    local msg="$1"
+    local color="${2:-green}"
+    local background="${3:-default}"
+
+    set_text_background "$background"
+    set_text_foreground "$color"
+    echo "${msg}[0m"
+}
+
+name_in_hosts()
+{
+    local hostname="$1"
+    local parts=( $( grep "${hostname}\$" /etc/hosts) )
+    [ "${#parts[@]}" -ne 0 ]
+}
+
+add_to_etc_hosts()
+{
+    local hostname="$1"
+    if ! name_in_hosts "${hostname}"; then
+        local -a lhost_parts=( $( grep "localhost" /etc/hosts) )
+        if [ "${#lhost_parts[@]}" -ne 0 ]; then
+            cecho "Adding '${lhost_parts[0]}  ${hostname}' to /etc/hosts"
+            sed -i "$ a \\${lhost_parts[0]}  ${hostname}" "/etc/hosts"
+        fi
+    fi
+}
+
+remove_from_etc_hosts()
+{
+    local hostname="$1"
+    cecho "Looking for ${hostname} in /etc/hosts"
+    if name_in_hosts "${hostname}"; then
+        cecho "Removing '${hostname}' from /etc/hosts"
+        sed -i "/${hostname}\$/d" "/etc/hosts"
+    fi
+}
+
+confirm_setup_names()
+{
+    if [ -n "$DBase" ] && [ -n "$AppName" ]; then
+        cecho "DBase = '$DBase' and AppName = '$AppName'." green
+    else
+        echo
+        cecho "Values missing for variables DBase and AppName in 'setup_names' script." red
+        exit 1
+    fi
+}
+

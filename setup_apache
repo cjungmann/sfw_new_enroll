@@ -1,0 +1,174 @@
+#!/usr/bin/env bash
+
+get_conf_site_dir()
+{
+    if [ -d "site" ]; then
+        echo "$PWD/site"
+        return 0
+    fi
+    return 1
+}
+
+site_name()      { echo "sfw_${AppName}"; }
+
+site_enabled()
+{
+    local site="$1"
+    local confpath="/etc/apache2/sites-enabled/$( site_name ).conf"
+    [ -h "$confpath" ]
+}
+
+add_apache_conf()
+{
+    local app_name="$1"
+    local domain="${Domain:-bogus.com}"
+    local dirindex="${DirIndex:-index.htm}"
+
+    if [ -z "${app_name}" ]; then
+        cecho "Cannot proceed without an app_name value (argument 1)." red
+        exit 1
+    fi
+
+    local -a settings=(
+        "   DocumentRoot   $( get_conf_site_dir )"
+        "   DirectoryIndex ${dirindex}"
+        "   ServerName     sfw_${app_name}"
+    )
+
+    if [ "$Domain" ]; then
+        settings+=( "   ServerAlias    ${app_name}.${Domain}" )
+    fi
+
+    local IFS=$'\n'
+    local confstr=$( cat <<EOF
+<VirtualHost *:80>
+${settings[*]}"
+</VirtualHost>
+EOF
+)
+
+    if is_root; then
+        if site_enabled "$( site_name )"; then
+            cecho "Site $( site_name ) is already enabled." red
+        else
+            cecho "Creating $( site_name ).conf in apache directory." green
+            echo "$confstr" > "/etc/apache2/sites-available/$( site_name ).conf"
+            a2ensite -q "$( site_name )"
+            service apache2 reload
+            add_to_etc_hosts "$( site_name )"
+
+            echo "$( site_name )"
+        fi
+    else
+        cecho "You are not root, we are NOT creating $( site_name ).conf" red
+        cecho "It would be, if you were root:" red
+        cecho "${confstr}" blue
+    fi
+}
+
+find_host_line()
+{
+    local host_name="$1"
+    local -a args=(
+        '^[[:digit:]]\{3\}\(.[[:digit:]]\{1,3\}\)\{3\}[[:space:]]\+'"$host_name"
+        /etc/hosts
+    )
+    grep "${args[@]}"
+}
+
+get_localhost_ip()
+{
+    local hlist=$( find_host_line "localhost" )
+    if [ "$?" -eq 0 ]; then
+        local -a parts=( $hlist )
+        if [ "${#parts[@]}" -eq 2 ]; then
+            echo "${parts[0]}"
+            return 0
+        fi
+    fi
+
+    return 1
+}
+
+add_to_hosts()
+{
+    local host_name="sfw_$1"
+    local hline=$( find_host_line "$host_name" )
+    if [ "$?" -ne 0 ]; then
+        cecho "Host '$host_name' is already installed.  No action taken." red
+    else
+        local ip=$( get_localhost_ip )
+        if [ "$?" -eq 0 ]; then
+            local new_line="$ip  $host_name"
+            echo "$new_line" >> /etc/hosts
+        fi
+    fi
+}
+
+remove_from_hosts()
+{
+    local host_name="sfw_$1"
+    local hline=$( find_host_line "$host_name" )
+    if [ "$?" -eq 0 ]; then
+        sed -i /"^${hline}$"/d /etc/hosts
+    else
+        cecho "Host '$host_name' not found.  No /etc/hosts deletions." red
+    fi
+}
+
+uninstall()
+{
+    if ! is_root; then
+        cecho "Cannot uninstall Apache without root." red
+        exit 1
+    fi
+
+    if site_enabled "$( site_name )"; then
+        cecho "Disabling $( site_name )" green
+        a2dissite -q "$( site_name )"
+        service apache2 reload
+
+        echo
+        cecho "Removing $( site_name ) from available list." green
+        rm "/etc/apache2/sites-available/$( site_name ).conf"
+
+        remove_from_etc_hosts "$( site_name )"
+    else
+        cecho "Nothing to do." red
+    fi
+}
+
+
+##########################
+# Execution begins here: #
+##########################
+
+if ! type -t cecho > /dev/null; then
+    source bash_utils
+fi
+
+set -a
+source setup_names
+set +a
+
+confirm_setup_names
+
+echo
+
+if is_root; then
+    if [ "$1" = "uninstall" ]; then
+        uninstall
+        remove_from_hosts "$AppName"
+    else
+        add_apache_conf "$AppName"
+        add_to_hosts "$AppName"
+    fi
+else
+    echo "You must be root to run setup_apache"
+    add_apache_conf "$AppName"
+fi
+
+
+
+
+

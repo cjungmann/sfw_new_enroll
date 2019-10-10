@@ -1,0 +1,106 @@
+$database            : SFW_Enroll2
+$xml-stylesheet      : default.xsl
+$default-mode        : login
+
+$session-type        : identity
+$test_authorized     : App_Session_Confirm
+$jump-not-authorized : Login.srm
+
+$shared : result_jumps
+   xml-stylesheet : jump.xsl
+   result
+      type : jumps
+      jumps
+         jump0 : Home.srm
+         jump1 : ?login
+         jump2 : ?login
+
+login
+   type         : form-page
+   session-type : establish
+   schema-proc  : App_User_Login
+   form-action  : ?login_submit
+   title        : Log into Application
+   navigation
+      target
+         label : Register as New User
+         url   : ?register
+      target
+         label : Recover Password
+         url   : ?req_rescue
+      target
+         label : Enter Password Code
+         url   : ?rescue
+   schema
+      field : email
+      field : password
+         type : password
+
+login_submit
+   session-type   : establish
+   type           : form-submit
+   procedure      : App_User_Login
+   siblings       : $result_jumps
+
+register
+   type         : form-page
+   session-type : establish
+   schema-proc  : App_User_Register
+   form-action  : ?register_submit
+   title        : Register as New User
+   navigation
+      target
+         label : Log into Existing User
+         url   : ?login
+   schema
+      field : email
+      field : password
+         type : password
+
+register_submit
+   session-type   : establish
+   type           : form-submit
+   procedure      : App_User_Register
+   siblings       : $result_jumps
+
+logout
+   type      : form-jump
+   procedure : App_User_Logout
+   siblings  : $result_jumps
+   
+req_rescue
+   type        : form-page
+   schema-proc : App_User_Password_Request_Rescue
+   form-action : ?req_rescue_submit
+   title       : Request Password Rescue Code
+   navigation
+      target
+         label : Normal Login
+         url   : ?login
+   schema
+      field : email
+
+req_rescue_submit
+   type      : form-submit
+   procedure : App_User_Password_Request_Rescue
+   siblings  : $result_jumps
+
+rescue
+   type        : form-page
+   schema-proc : App_User_Password_Rescue
+   form-action : ?rescue_submit
+   title       : Enter Password Rescue Code
+   navigation
+      target
+         label : Log into Existing User
+         url   : ?login
+   schema
+      field : email
+      field : code
+      field : password
+
+rescue_submit
+   type      : form-submit
+   procedure : App_User_Password_Rescue
+   siblings  : $result_jumps
+

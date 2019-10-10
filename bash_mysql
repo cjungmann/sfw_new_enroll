@@ -1,0 +1,145 @@
+#!/usr/bin/env bash
+
+# Check for and load bash_utils if not already loaded
+if ! type -t cecho > /dev/null; then
+    source bash_utils
+fi
+
+mysql_ci_collation()
+{
+    local coll
+
+    if [ $# -gt 0 ]; then
+        coll=$( mysql "$1" -BN -e "SELECT @@collation_database" )
+        cecho "The default collation for database '$1' ${coll}" blue
+    else
+        coll=$( mysql -BN -e "SELECT @@collation_database" )
+        cecho "The default collation for this mysql installtion is ${coll}" blue
+    fi
+    if [[ "$coll" =~ _ci$ ]]; then
+        return 0
+    fi
+    return 1
+}
+
+confirm_case_insensitive_collation()
+{
+    echo
+    if mysql_ci_collation "$1"; then
+        cecho "Default collation is case-insensitive."                      green
+    else
+        cecho "NOT using a case-insensitive collation."                     red
+        cecho "Email logins should be case-insensitive, so the email"       red
+        cecho "field of table User should either explicitly set a"          red
+        cecho "case-insensitive collation or queries testing for email"     red
+        cecho "matches coerce consistent case (either UPPER() or LOWER())." red
+
+        echo
+        cecho "Remove this warning if either corrective step has been completed." red
+
+        exit 1
+    fi
+}
+
+confirm_randstr_installed()
+{
+    echo
+    if mysql -e "SELECT make_randstr(20)" > /dev/null 2> /dev/null; then
+        cecho "make_randstr confirmed." green
+    else
+        cecho "make_randstr is not installed." red
+        cecho "make_randstr project at https://github.com/cjungmann/make_randstr.git" red
+        exit 1
+    fi
+}
+
+database_exists()
+{
+    local dbname="$1"
+    local -i count
+    local -a query=(
+        "SELECT COUNT(*)"
+        "FROM information_schema.SCHEMATA"
+        "WHERE SCHEMA_NAME='${dbname}'"
+        )
+    count=$( mysql -BN -e "${query[*]}" )
+
+    if [ "$?" -ne 0 ]; then
+        cecho "database_exists query failed. Terminating program."
+        exit 1
+    fi
+
+    [ "$count" -eq 1 ]
+}
+
+table_exists()
+{
+    local dbname="$1"
+    local tablename="$2"
+    local -i count
+    local -a query=(
+        "SELECT COUNT(*)"
+        "FROM information_schema.TABLES"
+        "WHERE TABLE_SCHEMA='${dbname}'"
+        "AND TABLE_NAME='${tablename}'"
+        )
+    count=$( mysql -BN -e "${query[*]}" )
+    
+    if [ "$?" -ne 0 ]; then
+        cecho "table_exists query failed. Terminating program."
+        exit 1
+    fi
+
+    [ "$count" -eq 1 ]
+}
+
+tables_list()
+{
+    local dbname="$1"
+    local -a query=(
+        "SELECT TABLE_NAME"
+        "FROM information_schema.TABLES"
+        "WHERE TABLE_SCHEMA='${dbname}'"
+        )
+
+    mysql -BN -e "${query[*]}"
+}
+
+proc_exists()
+{
+    local dbname="$1"
+    local procname="$2"
+    local -i count
+    local -a query=(
+        "SELECT COUNT(*)"
+        "FROM information_schema.ROUTINES"
+        "WHERE ROUTINE_SCHEMA='${dbname}'"
+        "AND ROUTINE_NAME='${procname}'"
+        )
+    count=$( mysql -BN -e "${query[*]}" )
+    
+    if [ "$?" -ne 0 ]; then
+        cecho "proc_exists query failed. Terminating program."
+        exit 1
+    fi
+
+    [ "$count" -eq 1 ]
+}
+
+get_default_mysql_collation()
+{
+    local dbname="$1"
+    mysql "${dbname}" -BN -e "SELECT @@collation_database"
+}
+
+terminate_on_missing_proc()
+{
+    local dbase="$1"
+    local procname="$2"
+
+    if ! proc_exists "$dbase" "$procname"; then
+        cecho "Procedure '${procname}' is missing. Terminating script." red
+        exit 1
+    fi
+}
+

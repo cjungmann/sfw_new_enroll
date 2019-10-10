@@ -1,0 +1,14 @@
+$shared : autoload_page
+   navigation
+      class : mynav
+      target
+         label : Profile
+         url   : ?profile
+         type  : open
+      topic
+         label : Administration
+         result : admin_targets
+      target
+         label : Logout
+         url   : Login.srm?logout
+      
