@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+
+source test_utils
+
+# Command to confirm appropriate shell level for persistent HTTP_COOKIE.
+# Disable the command to force fresh login at each running of script.
+if ! confirm_shell_level; then
+    exit 1
+fi
+
+# Variable that will be indirectly assigned in the
+# 'login' command via a nameref BASH variable.
+declare ECOOKIES
+
+if is_logged_in; then
+    echo "[36;1mReusing established session.[m"
+else
+    echo "[34;1mNeeds new authorization.[m"
+    login
+    export HTTP_COOKIE="${ECOOKIES}"
+fi
+
+
+cd site
+schema.fcgi Home.srm -m profile_submit -v id=1 -v fname=Chuck -v lname=Jungmann
+cd ..
+
+
+
