@@ -63,6 +63,11 @@ register_submit
    procedure      : App_User_Register
    siblings       : $result_jumps
 
+# This response mode is for test scripts to confirm login status.
+login_test
+   type         : form-submit
+   procedure    : App_Session_Test
+
 logout
    type      : form-jump
    procedure : App_User_Logout
