@@ -15,10 +15,9 @@
 
   <xsl:param name="version" select="'debug'" />
   <xsl:param name="sheet" />
+  <xsl:param name="app_title">Enrollment Template</xsl:param>
 
   <xsl:variable name="nl">&#xa;&#xd;</xsl:variable>
-
-  <xsl:variable name="app_title">Simple Enrollment Template</xsl:variable>
 
   <!-- Generic node copying stuff -->
 
