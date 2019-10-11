@@ -70,6 +70,19 @@ BEGIN
     WHERE id_session = session_id;
 END $$
   
+-- -----------------------------------------
+-- Procedure for test scripts to check for
+--  existing session. Returns value of
+--  COUNT(), value != 0 confirms session.
+-- -----------------------------------------
+DROP PROCEDURE IF EXISTS App_Session_Test $$
+CREATE PROCEDURE App_Session_Test()
+BEGIN
+   SELECT COUNT(*) AS count
+     FROM Session_Info
+    WHERE id_session = @session_confirmed_id;
+END $$
+  
 -- -----------------------------------------------
 -- Sets the persistent 'id_user' session value.
 -- -----------------------------------------------
