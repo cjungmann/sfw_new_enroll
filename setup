@@ -76,11 +76,21 @@ use_xmllint() { which xmllint 1> /dev/null; }
 
 setup_stylesheet()
 {
-    local spath="$1"
+    local source_file="$1"
+    local -a args=( )
+
+    if [ "$Version" -a "$Version" != "debug" ]; then
+        args+=( --stringparam version release )
+    fi
+
+    if [ "$Title" ]; then
+        args+=( --stringparam app_title "$Title" )
+    fi
+
     if use_xmllint; then
-        xsltproc setup_default.xsl "$spath" | xmllint --format -
+        xsltproc "${args[@]}" setup_default.xsl "$source_file" | xmllint --format -
     else
-        xsltproc setup_default.xsl "$spath"
+        xsltproc "${args[@]}" setup_default.xsl "$source_file"
     fi
 }
 
