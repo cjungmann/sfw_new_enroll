@@ -26,6 +26,12 @@ profile
    schema
 
 profile_submit
-   type   : form-submit
-   procedure : App_User_Profile_Update
+   type           : form-submit
+   procedure      : App_User_Profile_Update
+   xml-stylesheet : jump.xsl
+   result
+      type : jumps
+      jumps
+         jump0 : Home.srm?page
+         jump1 : Home.srm?page
    
