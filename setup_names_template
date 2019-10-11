@@ -5,21 +5,29 @@
 
 # MySQL Database Name:
 # Example: DBase=SFW_Enroll
-DBase=
+declare DBase=
 
 # Base of application name.
 # For Apache, config file name is "sfw_${AppName}.conf,
 # and in config file, ServerName is "sfw_${AppName}"
 # Example: AppName=enroll
-AppName=
+declare AppName=
 
 # Used in config file for DirectoryIndex value:
 # The default value is a good choice, but may be changed.
-DirIndex=Login.srm
+declare DirIndex=Login.srm
 
 # If set, this will be a ServerAlias value in the
 # config file in the form "${AppName}.${Domain}"
 # Example: Domain=domain.com
-Domain=
+declare Domain=
 
-    
+# The value here will replace the default application title
+# in the head/title and the body/h1 elements:
+declare Title=
+
+# This value determines which javascript scripts (a single
+# minimized script, or the set of several components scripts)
+# The possible values are "debug" or "release" (though any
+# value that is not "debug" is "release".
+declare Version=debug
