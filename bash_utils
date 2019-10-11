@@ -77,11 +77,16 @@ remove_from_etc_hosts()
 
 confirm_setup_names()
 {
-    if [ -n "$DBase" ] && [ -n "$AppName" ]; then
-        cecho "DBase = '$DBase' and AppName = '$AppName'." green
+    if [ -e  'setup_names' ]; then
+        if [ -n "$DBase" ] && [ -n "$AppName" ]; then
+            cecho "DBase = '$DBase' and AppName = '$AppName'." green
+        else
+            echo
+            cecho "Values missing for variables DBase and AppName in 'setup_names' script." red
+            exit 1
+        fi
     else
-        echo
-        cecho "Values missing for variables DBase and AppName in 'setup_names' script." red
+        cecho "Unable to find the 'setup_names' file.  Use setup_names_template as guide." red
         exit 1
     fi
 }
