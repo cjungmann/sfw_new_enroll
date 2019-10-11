@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+
+# Import user credentials for email and password values:
+source test_creds
+
+export_cookies()
+{
+    local line
+    local IFS=$'\n'
+    local -a cookie_lines
+    local -a cookie
+    local -a cookies=()
+
+    cd site
+    cookie_lines=( $( schema.fcgi Login.srm 2>&1 | grep "^Set-Cookie" ) )
+    cd ..
+
+    local IFS=": "
+    for line in "${cookie_lines[@]}"; do
+        cookie=( $line )
+        cookies+=( "${cookie[1]}" )
+    done
+
+    IFS=';'
+    eval "export HTTP_COOKIE=\"${cookies[*]}\""
+}
+
+get_value_from_login_test()
+{
+    local doc="$1"
+    local row_el_name
+    local -i count
+    local rex_name="rndx=\"[^\\\"]+\".*row-name=\"([^\\\"]+)\""
+
+    if [[ "$doc" =~ $rex_name ]]; then
+        row_el_name="${BASH_REMATCH[1]}"
+    else
+        echo "failed to identify row-name"
+        echo "0"
+        return 1
+    fi
+
+    local rex_row="<${row_el_name} count=\"([[:digit:]]+)\""
+    if [[ "$doc" =~ $rex_row ]]; then
+        count="${BASH_REMATCH[1]}"
+    else
+        echo "failed to extract count value."
+        echo "0"
+        return 1
+    fi
+
+    echo "$count"
+    return 0
+}
+
+is_logged_in()
+{
+    if [ -n "$HTTP_COOKIE" ]; then
+        local -i count
+        local row
+
+        cd site
+        row=$( schema.fcgi Login.srm -m login_test 2>/dev/null )
+        cd ..
+
+        count=$( get_value_from_login_test "$row" )
+
+        if [ "$?" -eq 0 -a "$count" -ne 0 ]; then
+            return 0
+        fi
+    fi
+
+    return 1
+}
+
+login()
+{
+    local -n XCOOKIES=ECOOKIES
+    local result
+
+    if [ -n "$email" ] && [ -n "$password" ]; then
+        export_cookies
+        echo "New cookie values are [1;32m$HTTP_COOKIE[0m"
+        XCOOKIES="$HTTP_COOKIE"
+
+        local -a args=(
+            Login.srm
+            -m login_submit
+            -v email="${email}"
+            -v password="${password}"
+        )
+
+        cd site
+        result=$( schema.fcgi "${args[@]}" >/dev/null )
+        cd ..
+    else
+        echo "Missing email and password values (see test_creds file)."
+        return 1
+    fi
+}
+
