@@ -3,6 +3,24 @@
 # Import user credentials for email and password values:
 source test_creds
 
+confirm_shell_level()
+{
+    if [ "${SHLVL}" -gt 1 ]; then
+        local cname="${0#\.\/}"
+        echo
+        echo "The script must be run as \"source\" for persistent HTTP_COOKIE variable."
+        echo
+        echo "enter:"
+        echo "    source ${cname}"
+        echo "instead of"
+        echo "    ./${cname}"
+        echo
+        return 1
+    fi
+
+    return 0
+}
+
 export_cookies()
 {
     local line
