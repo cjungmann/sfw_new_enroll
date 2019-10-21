@@ -1,0 +1,28 @@
+# *-* mode:sh *-*
+
+defaults
+auth           plain
+tls            on
+tls_starttls   on
+tls_trust_file /etc/ssl/certs/ca-certificates.crt
+logfile        ./msmtp.log
+
+account  gmail
+host     smtp.gmail.com
+port     587
+# Replace the ----- with a user name
+user     -----@gmail.com
+from     -----@gmail.com
+# Replace the _-_-_-_ with the password
+password _-_-_-_
+# Remember that for two-factor authentication, you'll need to
+# get a App Password from Google (in the Security section of
+# your Google settings page).
+
+
+account default : gmail
+
+# Hints/Examples
+
+# View mail server capabilities:
+# msmtprc --host smtp.gmail.com -S

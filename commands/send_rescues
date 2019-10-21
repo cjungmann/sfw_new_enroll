@@ -1,0 +1,157 @@
+#!/usr/bin/env bash
+
+source ../setup_names
+
+declare url_amp="&amp;"
+
+get_from_address()
+{
+    if [[ $( grep from "${config}" ) =~ from[[:space:]]+([^[:space:]]+)$ ]]; then
+        echo "${BASH_REMATCH[1]}"
+        return 0
+    else
+        return 1
+    fi
+}
+
+get_recovery_url()
+{
+    echo "http://sfw_enroll2/Login.srm?rescue${url_amp}email=${email}${url_amp}code=${code}"
+}
+
+get_rescues()
+{
+    local -a fields
+    fields=( $( mysql "${DBase}" -BN -e "CALL App_Password_Rescue_To_Send()" ) )
+
+    local -a rec=()
+    local -a records=()
+
+
+    local -i fnum=0
+    local val
+
+    local IFS="$MFS"
+
+    for val in "${fields[@]}"; do
+        rec+=( "$val" )
+        (( ++fnum ))
+
+        if [ "$fnum" -gt 2 ]; then
+            records+=( "${rec[*]}" )
+            rec=()
+            fnum=0
+        fi
+    done
+
+    IFS="$MRS"
+    echo "${records[*]}"
+}
+
+add_to_sent_rescues()
+{
+    local -i id="$1"
+    local -n senter=Sent_Rescues
+    local -i len="${#senter}"
+    if [ "$len" -eq 0 ]; then
+        senter="$id"
+    else
+        senter="$senter $id"
+    fi
+}
+
+process_rescue()
+{
+    local IFS="$MFS"
+    local -a fields=( $1 )
+
+    local -n emails_sent=Sent_Rescues
+
+    local id="${fields[0]}"
+    local email="${fields[1]}"
+    local code="${fields[2]}"
+
+    local recovery_url=$( get_recovery_url )
+
+    make_head()
+    {
+        echo "To: ${email}"
+        echo "From: ${From_Address}"
+        echo "Subject: ${Title} Password Recovery"
+    }
+
+    make_text()
+    {
+        echo "Your recovery code is ${code}."
+        echo "Navigate to $recovery_url to set a new password."
+    }
+
+    make_html()
+    {
+        echo "<html>"
+        echo "<head><title>Password Recovery</title></head>"
+        echo "<body>"
+        echo "<p>Your recovery code is <strong>${code}</strong>.</p>"
+        echo "<p>"
+        echo "Click the"
+        echo "<a href=\"${recovery_url}\">"
+        echo "link"
+        echo "</a>"
+        echo " to enter a new password."
+        echo "</p>"
+        echo "</body>"
+        echo "</html>"
+    }
+
+    local payload=$(
+        make_head
+        echo "Content-Type : text/html"
+        make_html
+          )
+
+     echo "$payload" | msmtp -v --file=./msmtprc -- "${email}"
+
+    add_to_sent_rescues "$id"
+}
+
+update_mysql_with_sent_rescues()
+{
+    local -a rescues=( $Sent_Rescues )
+
+    echo "We're noting the completion of [32;1m${#rescues[@]}[m rescues sent."
+    echo "The string is [32;1m${Sent_Rescues[*]}[m"
+    
+}
+
+send_emails()
+{
+    local -a records
+    local record
+
+    records=( $( get_rescues ) )
+
+    for record in "${records[@]}"; do
+        process_rescue "$record"
+    done
+}
+
+#########################
+# Execution begins here #
+#########################
+
+declare config="msmtprc"
+
+# Delimiters for records (MRS) and record fields (MFS):
+declare MRS=$'\n'  # should be newline unless 
+declare MFS=$'|'   # can't be space, tab or newline
+
+declare Sent_Rescues
+declare From_Address
+
+From_Address=$( get_from_address )
+if [ "$?" -eq 0 ]; then
+    echo "From address is [32;1m$From_Address[m"
+fi
+
+send_emails
+update_mysql_with_sent_rescues
