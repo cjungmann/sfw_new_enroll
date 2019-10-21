@@ -4,7 +4,8 @@ DELIMITER $$
 DROP PROCEDURE IF EXISTS App_User_Targets $$
 CREATE PROCEDURE App_User_Targets()
 BEGIN
-   -- This query can be conditional
+   -- This query can be conditional to selectively
+   -- include navigation options.
    SELECT t.label, t.url
      FROM Target t;
 END $$
@@ -39,11 +40,9 @@ BEGIN
     WHERE u.id = id;
 
     IF ROW_COUNT() = 0 THEN
-       -- SELECT 1 AS error, 'No changes made.' AS msg;
-       SELECT 1 AS error, CONCAT('No changes made, ', fname, ', ', lname, ' at id=', id) AS msg;
+       SELECT 1 AS error, 'Failed to save record.' AS msg;
     ELSE
-       -- SELECT 0 AS error;
-       SELECT 2 AS error, CONCAT('Updated at ', id, ' with ', fname, ' and ', lname) AS msg;
+       SELECT 0 AS error;
     END IF;
 END $$
 
