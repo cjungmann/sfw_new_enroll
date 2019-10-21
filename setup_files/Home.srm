@@ -24,6 +24,8 @@ profile
    title        : User Profile
    autoload_tag : page
    schema
+      field : id
+         hidden : true
 
 profile_submit
    type           : form-submit
