@@ -25,9 +25,11 @@ CREATE TABLE IF NOT EXISTS Password_Reset
    code          CHAR(6),
    expires       DATETIME,
    attempts_left INT UNSIGNED,
+   emailed       DATETIME NULL,
 
    INDEX(id_user),
-   INDEX(email)
+   INDEX(email),
+   INDEX(emailed)
 );
 
 CREATE TABLE IF NOT EXISTS Session_Info
