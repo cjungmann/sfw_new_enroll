@@ -65,7 +65,7 @@ proc_block: BEGIN
    END IF;
 
    CALL App_Session_Initialize(user_id);
-   SELECT 0 AS error, 'Login success.' AS msg;
+   SELECT 0 AS error;
 END $$
 
 -- ------------------------------------------
@@ -91,7 +91,7 @@ proc_block: BEGIN
       SELECT LAST_INSERT_ID() INTO user_id;
       CALL App_User_Password_Set(user_id, password);
       CALL App_Session_Initialize(user_id);
-      SELECT 0 AS error, 'New user defined.' AS msg;
+      SELECT 0 AS error;
    END IF;
    
 END $$
@@ -169,7 +169,7 @@ BEGIN
 
    IF user_id IS NULL THEN
       SELECT 1 AS error, 'Unrecognized email.' AS msg;
-   ELSEIF NOW() < expires OR attempts_left < 1 THEN
+   ELSEIF expires < NOW() OR attempts_left < 1 THEN
       SELECT 1 AS error, 'Password rescue code has expired.' AS msg;
 
       DELETE FROM pr USING Password_Reset AS pr
@@ -218,5 +218,20 @@ BEGIN
    END IF;
 END $$
 
+-- ----------------------------------------------------
+DROP PROCEDURE IF EXISTS App_Password_Rescues_To_Send $$
+CREATE PROCEDURE App_Password_Rescues_To_Send()
+BEGIN
+   SELECT id_user, email, code
+     FROM Password_Reset
+    WHERE emailed IS NULL;
+END $$
+
+-- -------------------------------------------------
+DROP PROCEDURE IF EXISTS App_Password_Rescues_Sent $$
+CREATE PROCEDURE App_Password_Rescues_Sent(ids_sent TEXT)
+BEGIN
+
+END $$
 
 DELIMITER ;
