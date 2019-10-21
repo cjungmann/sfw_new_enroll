@@ -13,9 +13,9 @@ fi
 declare ECOOKIES
 
 if is_logged_in; then
-    echo "[36;1mReusing established session.[m"
+    eecho "[36;1mReusing established session.[m"
 else
-    echo "[34;1mNeeds new authorization.[m"
+    eecho "[34;1mNeeds new authorization.[m"
     login
     export HTTP_COOKIE="${ECOOKIES}"
 fi
