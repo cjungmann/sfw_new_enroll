@@ -2,6 +2,9 @@ $shared : autoload_page
    navigation
       class : mynav
       target
+         label : Home
+         url   : Home.srm
+      target
          label : Profile
          url   : ?profile
          type  : open
