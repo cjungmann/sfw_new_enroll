@@ -3,18 +3,20 @@
 # Import user credentials for email and password values:
 source test_creds
 
+eecho() { echo "$1" >&2; }
+
 confirm_shell_level()
 {
     if [ "${SHLVL}" -gt 1 ]; then
         local cname="${0#\.\/}"
-        echo
-        echo "The script must be run as \"source\" for persistent HTTP_COOKIE variable."
-        echo
-        echo "enter:"
-        echo "    source ${cname}"
-        echo "instead of"
-        echo "    ./${cname}"
-        echo
+        eecho
+        eecho "The script must be run as \"source\" for persistent HTTP_COOKIE variable."
+        eecho
+        eecho "enter:"
+        eecho "    source ${cname}"
+        eecho "instead of"
+        eecho "    ./${cname}"
+        eecho
         return 1
     fi
 
@@ -53,7 +55,8 @@ get_value_from_login_test()
     if [[ "$doc" =~ $rex_name ]]; then
         row_el_name="${BASH_REMATCH[1]}"
     else
-        echo "failed to identify row-name"
+        eecho "failed to identify row-name"
+        eecho "[33;1m$doc[m"
         echo "0"
         return 1
     fi
@@ -62,7 +65,7 @@ get_value_from_login_test()
     if [[ "$doc" =~ $rex_row ]]; then
         count="${BASH_REMATCH[1]}"
     else
-        echo "failed to extract count value."
+        eecho "failed to extract count value."
         echo "0"
         return 1
     fi
@@ -98,7 +101,7 @@ login()
 
     if [ -n "$email" ] && [ -n "$password" ]; then
         export_cookies
-        echo "New cookie values are [1;32m$HTTP_COOKIE[0m"
+        eecho "New cookie values are [1;32m$HTTP_COOKIE[0m"
         XCOOKIES="$HTTP_COOKIE"
 
         local -a args=(
@@ -112,7 +115,7 @@ login()
         result=$( schema.fcgi "${args[@]}" >/dev/null )
         cd ..
     else
-        echo "Missing email and password values (see test_creds file)."
+        eecho "Missing email and password values (see test_creds file)."
         return 1
     fi
 }
