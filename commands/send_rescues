@@ -54,9 +54,9 @@ add_to_sent_rescues()
     local -n senter=Sent_Rescues
     local -i len="${#senter}"
     if [ "$len" -eq 0 ]; then
-        senter="$id"
+        senter=( "$id" )
     else
-        senter="$senter $id"
+        senter=( "${senter[@]}" "$id" )
     fi
 }
 
@@ -117,10 +117,9 @@ process_rescue()
 update_mysql_with_sent_rescues()
 {
     local -a rescues=( $Sent_Rescues )
-
-    echo "We're noting the completion of [32;1m${#rescues[@]}[m rescues sent."
-    echo "The string is [32;1m${Sent_Rescues[*]}[m"
-    
+    local IFS=$','
+    echo "CALL App_Password_Rescues_Sent('${rescues[*]}')"
+    mysql "${DBase}" -BN -e "CALL App_Password_Rescues_Sent('${rescues[*]}')"
 }
 
 send_emails()
