@@ -231,7 +231,15 @@ END $$
 DROP PROCEDURE IF EXISTS App_Password_Rescues_Sent $$
 CREATE PROCEDURE App_Password_Rescues_Sent(ids_sent TEXT)
 BEGIN
+   DECLARE dnow DATETIME DEFAULT NOW();
 
+   CALL ssys_make_SFW_IntTable_from_list(ids_sent);
+
+   UPDATE Password_Reset
+      SET emailed = dnow
+    WHERE id_user IN (SELECT val FROM SFW_IntTable);
+
+   DROP TABLE SFW_IntTable;
 END $$
 
 DELIMITER ;
