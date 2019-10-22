@@ -31,3 +31,51 @@ declare Title=
 # The possible values are "debug" or "release" (though any
 # value that is not "debug" is "release".
 declare Version=debug
+
+
+# Look at 'man msmtp'
+# For reference, look at /etc/msmtprc
+
+# Emailing Stuff
+declare EmailHost=
+declare EmailUser=
+declare EmailPort=
+
+declare EmailAuth=
+declare EmailFrom=
+declare EmailPassword=
+declare EmailLogFile=
+
+# Setup script 'setup_bogus_accounts' uses the following
+# two variables to create a bunch of acounts for testing
+# onboarding and password recovery.
+declare EmailTestRoot=
+declare EmailTestDomain=
+
+declare -a emailargs=(
+    "--host=$EmailHost"
+    "--user=$EmailUser"
+    "--port=$EmailPort"
+)
+
+if [ -n "$EmailAuth" ]; then
+    emailargs+=( "--auth=$EmailAuth" )
+fi
+
+if [ -n "$EmailFrom" ]; then
+    emailargs+=( "--auto-from=off" "--from=$EmailFrom" )
+fi
+
+
+# This needs some research:
+if [ -n "$EmailPassword" ]; then
+    declare peval=$( passwordeval "$EmailPassword" )
+    emailargs+=( --passwordeval "$eval" );
+fi
+
+msmtp "${emailargs[@]}" blah blah
+
+
+
+
+# smstp 
