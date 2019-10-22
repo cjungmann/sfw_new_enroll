@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+
+# implicitly includes bash_utils:
+source bash_mysql
+
+# Gather domain names
+source setup_names
+
+bogus_accounts_already_loaded()
+{
+    local -a query=(
+        "SELECT COUNT(*)"
+        "  FROM User"
+        " WHERE email LIKE '${EmailTestRoot}%.${EmailTestDomain}'"
+    )
+
+    local -a args=(
+        "$DBase"
+        -BN
+        -e
+        "${query[*]}"
+    )
+
+    local -i count
+
+    count=$( mysql "${args[@]}" )
+
+    [ "$count" -gt 0 ]
+}
+
+create_account()
+{
+    local email="$1"
+    local query="INSERT INTO User(email) VALUES('$email')"
+
+    mysql "$DBase" -e "$query"
+    if [ $? -ne 0 ]; then
+        cecho "Error creating an account with '$email'" red
+        exit 1
+    fi
+}
+
+create_bogus_accounts()
+{
+    local -i count="${1:-10}"
+    local eaddr eid
+
+    for ((i=0; i<$count; ++i)); do
+        eid=$(( 1000 + i ))
+        eid="${eid:1}"
+        eaddr="${EmailTestRoot}+${eid}.${EmailTestDomain}"
+        create_account "$eaddr"
+    done
+}
+
+
+
+
+
+
+#########################
+# Execution Begins Here #
+#########################
+
+if bogus_accounts_already_loaded; then
+    cecho "The bogus accounts have already been loaded." red
+else
+    create_bogus_accounts
+fi
