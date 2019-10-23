@@ -94,6 +94,23 @@ setup_stylesheet()
     fi
 }
 
+make_wait_for_email()
+{
+    cd site
+
+    local -a xslargs=(
+        --stringparam
+        message
+        "Please watch your email for an invitation to confirm your application."
+        )
+
+    cecho "Making wait_for_email.htm as landing page after application form." green
+
+    schema.fcgi Login.srm -m register | xsltproc "${xslargs[@]}" jump.xsl - > wait_for_email.htm
+
+    cd ..
+}
+
 setup_site()
 {
     if ! [ -d "site" ]; then
@@ -110,6 +127,8 @@ setup_site()
     setup_stylesheet /usr/local/lib/schemafw/jump.xsl > site/jump.xsl
 
     copy_site_files
+
+    make_wait_for_email
 
     if is_root; then
         chown -R -h "$SUDO_USER:$SUDO_USER" site
