@@ -23,3 +23,30 @@ Features in this template:
 - A XSL stylesheet, **setup_default.xsl** is provided to
   make changes to the **default.xsl** stylesheet provided
   by the Schema Framework.
+
+## Commands Directory
+
+The *commands* directory includes commands that perform actions
+that cannot be directly performed by **schema.fcgi**.  In the
+beginning, it is mainly sending emails to confirm registration
+and to recover passwords.
+
+### Emailing Commands
+
+The command for emailing in this template (which you are not
+required to use) uses **msmtp** to send emails.  For **msmtp**
+to work, it needs a configuration file, typically named
+*msmtprc*, a convention we will follow.  In this case, the
+configuration file is local to the command and implicitly
+loaded.
+
+The repository includes a *msmtprc_template* that can be
+used to help create a working template.  In my implementations,
+I copy *msmtprc_template* to *msmtprc_custom*, and I enter the
+site settings in the *msmtprc_custom* file, and then make a
+symbolic link from *msmtprc_custom* to *msmtprc*.
+
+~~~sh
+cp -s msmtprc_custom msmtprc
+~~~
+
