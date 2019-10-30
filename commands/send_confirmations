@@ -1,0 +1,194 @@
+#!/usr/bin/env bash
+
+source ../setup_names
+
+declare url_amp="&amp;"
+
+get_from_address()
+{
+    if [[ $( grep from "${config}" ) =~ from[[:space:]]+([^[:space:]]+)$ ]]; then
+        echo "${BASH_REMATCH[1]}"
+        return 0
+    else
+        return 1
+    fi
+}
+
+get_form_url()
+{
+    local -a url=(
+        "http://sfw_enroll2/Login.srm?confirm_app"
+        "${url_amp}"
+        "id=${id}"
+        "${url_amp}"
+        "email=${email}"
+        "${url_amp}"
+        "code=${code}"
+    )
+
+    local IFS=''
+    echo "${url[*]}"
+}
+
+get_form_action_url()
+{
+    echo "http://sfw_enroll2/Login.srm?confirm_app_submit"
+}
+
+get_applications()
+{
+    local -a fields
+    fields=( $( mysql "${DBase}" -BN -e "CALL App_Application_Emails_To_Send" ) )
+
+    local -a rec=()
+    local -a records=()
+
+
+    local -i fnum=0
+    local val
+
+    local IFS="$MFS"
+
+    for val in "${fields[@]}"; do
+        rec+=( "$val" )
+        (( ++fnum ))
+
+        if [ "$fnum" -gt 2 ]; then
+            records+=( "${rec[*]}" )
+            rec=()
+            fnum=0
+        fi
+    done
+
+    IFS="$MRS"
+    echo "${records[*]}"
+}
+
+add_to_sent_rescues()
+{
+    local -i id="$1"
+    local -n senter=Sent_Applications
+    local -i len="${#senter}"
+    if [ "$len" -eq 0 ]; then
+        senter=( "$id" )
+    else
+        senter=( "${senter[@]}" "$id" )
+    fi
+}
+
+process_rescue()
+{
+    local IFS="$MFS"
+    local -a fields=( $1 )
+
+    local -n emails_sent=Sent_Applications
+
+    local id="${fields[0]}"
+    local email="${fields[1]}"
+    local code="${fields[2]}"
+
+    local form_url=$( get_form_url )
+
+    make_head()
+    {
+        echo "To: ${email}"
+        echo "From: ${From_Address}"
+        echo "Subject: ${Title} Account Confirmation"
+    }
+
+    make_text()
+    {
+        echo "Your recovery code is ${code}."
+        echo "Navigate to $form_url to confirm your application."
+    }
+
+    make_html()
+    {
+        echo "<html>"
+        echo "<head><title>Account Confirmation</title></head>"
+        echo "<body>"
+        echo "<p>Your confirmation code is <strong>${code}</strong>.</p>"
+        echo "<p>"
+        echo "Navigate to "
+        echo "<a href=\"${form_url}\">"
+        echo "${form_url}"
+        echo "</a>"
+        echo " to confirm your application."
+        echo "</p>"
+
+        # echo "<p>"
+        # # create the form here
+        # echo "<form method=\"post\" action=\"$( get_form_action_url )\">"
+        # echo "<p>"
+        # echo "<label for=\"id\">id</label>"
+        # echo "<input type=\"text\" name=\"id\" value=\"${id}\" />"
+        # echo "</p>"
+        # echo "<p>"
+        # echo "<label for=\"email\">email</label>"
+        # echo "<input type=\"text\" name=\"email\" value=\"${email}\" />"
+        # echo "</p>"
+        # echo "<p>"
+        # echo "<label for=\"code\">code</label>"
+        # echo "<input type=\"text\" name=\"code\" value=\"${code}\" />"
+        # echo "</p>"
+        # echo "<p>"
+        # echo "<input type=\"submit\" />"
+        # echo "</p>"
+        # echo "</form>"
+        # echo "</p>"
+
+        echo "</body>"
+        echo "</html>"
+    }
+
+    local payload=$(
+        make_head
+        echo "Content-Type : text/html"
+        make_html
+          )
+
+     echo "$payload" | msmtp --file=./msmtprc -- "${email}"
+
+    add_to_sent_rescues "$id"
+}
+
+update_mysql_with_sent_rescues()
+{
+    local -a rescues=( $Sent_Rescues )
+    local IFS=$','
+    echo "CALL App_Password_Rescues_Sent('${rescues[*]}')"
+    mysql "${DBase}" -BN -e "CALL App_Password_Rescues_Sent('${rescues[*]}')"
+}
+
+send_emails()
+{
+    local -a records
+    local record
+
+    records=( $( get_applications ) )
+
+    for record in "${records[@]}"; do
+        process_rescue "$record"
+    done
+}
+
+#########################
+# Execution begins here #
+#########################
+
+declare config="msmtprc"
+
+# Delimiters for records (MRS) and record fields (MFS):
+declare MRS=$'\n'  # should be newline unless 
+declare MFS=$'|'   # can't be space, tab or newline
+
+declare Sent_Applications
+declare From_Address
+
+From_Address=$( get_from_address )
+if [ "$?" -eq 0 ]; then
+    echo "From address is [32;1m$From_Address[m"
+fi
+
+send_emails
+update_mysql_with_sent_rescues
