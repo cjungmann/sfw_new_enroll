@@ -22,7 +22,7 @@ get_recovery_url()
 get_rescues()
 {
     local -a fields
-    fields=( $( mysql "${DBase}" -BN -e "CALL App_Password_Rescue_To_Send()" ) )
+    fields=( $( mysql "${DBase}" -BN -e "CALL App_Password_Rescues_To_Send()" ) )
 
     local -a rec=()
     local -a records=()
@@ -109,7 +109,7 @@ process_rescue()
         make_html
           )
 
-     echo "$payload" | msmtp -v --file=./msmtprc -- "${email}"
+     echo "$payload" | msmtp --file=./msmtprc -- "${email}"
 
     add_to_sent_rescues "$id"
 }
