@@ -1,8 +1,8 @@
 DELIMITER $$
 
 -- -----------------------------------------------
-DROP FUNCTION IF EXISTS App_User_Password_Check $$
-CREATE FUNCTION App_User_Password_Check(id_user INT UNSIGNED, password VARCHAR(30))
+DROP FUNCTION IF EXISTS App_User_Password_Is_Valid $$
+CREATE FUNCTION App_User_Password_Is_Valid(id_user INT UNSIGNED, password VARCHAR(30))
 RETURNS BOOLEAN
 BEGIN
    DECLARE pcount INT UNSIGNED;
@@ -16,8 +16,8 @@ BEGIN
 END $$
 
 -- ----------------------------------------------
-DROP PROCEDURE IF EXISTS App_User_Password_Set $$
-CREATE PROCEDURE App_User_Password_Set(user_id INT UNSIGNED, password VARCHAR(30))
+DROP PROCEDURE IF EXISTS App_Internal_User_Password_Set $$
+CREATE PROCEDURE App_Internal_User_Password_Set(user_id INT UNSIGNED, password VARCHAR(30))
 BEGIN
    DECLARE new_salt CHAR(32) DEFAULT make_randstr(32);
    DECLARE scount INT UNSIGNED;
@@ -59,7 +59,7 @@ proc_block: BEGIN
      FROM User u
     WHERE u.email = email;
 
-   IF user_id IS NULL OR NOT(App_User_Password_Check(user_id, password)) THEN
+   IF user_id IS NULL OR NOT(App_User_Password_Is_Valid(user_id, password)) THEN
       SELECT 2 AS error, 'The login email or password is invalid.' AS msg;
       LEAVE proc_block;
    END IF;
@@ -89,7 +89,7 @@ proc_block: BEGIN
 
    IF ROW_COUNT() > 0 THEN
       SELECT LAST_INSERT_ID() INTO user_id;
-      CALL App_User_Password_Set(user_id, password);
+      CALL App_Internal_User_Password_Set(user_id, password);
       CALL App_Session_Initialize(user_id);
       SELECT 0 AS error;
    END IF;
@@ -190,7 +190,7 @@ BEGIN
           WHERE pr.id_user = user_id;
       END IF;
    ELSE
-      CALL App_User_Password_Set(user_id, password);
+      CALL App_Internal_User_Password_Set(user_id, password);
       SELECT 0 AS error, 'Password set.' AS msg;
 
       DELETE FROM pr USING Password_Reset AS pr
@@ -213,7 +213,7 @@ BEGIN
    IF user_id IS NULL THEN
       SELECT 1 AS error, 'Incorrect password.' AS msg;
    ELSE
-      CALL App_User_Password_Set(user_id, new_password);
+      CALL App_Internal_User_Password_Set(user_id, new_password);
       SELECT 0 AS error, 'Password changed.' AS msg;
    END IF;
 END $$
@@ -241,5 +241,114 @@ BEGIN
 
    DROP TABLE SFW_IntTable;
 END $$
+
+
+-- --------------------------------------------------------
+-- Procedures follow for application method of registration
+-- --------------------------------------------------------
+
+-- ---------------------------------------------------
+-- Procedure to be used with a time-trigger.
+-- ---------------------------------------------------
+DROP PROCEDURE IF EXISTS App_User_Applicant_Cleanup $$
+CREATE PROCEDURE App_User_Applicant_Cleanup()
+BEGIN
+   DELETE FROM Applicant
+    WHERE expires > NOW();
+END $$
+
+-- ---------------------------------------------
+DROP PROCEDURE IF EXISTS App_User_Application $$
+CREATE PROCEDURE App_User_Application(email VARCHAR(128))
+BEGIN
+   DECLARE ucount INT UNSIGNED;
+
+   SELECT COUNT(*) INTO ucount
+     FROM User u
+    WHERE u.email = email;
+
+   IF ucount = 0 THEN
+      INSERT INTO Application(email, expires, code)
+      VALUES(email,
+             ADDTIME(NOW(), '0:20:0'),
+             make_randstr(20));
+
+      IF ROW_COUNT() = 1 THEN
+         SELECT 0 AS error;
+      ELSE
+         SELECT 1 AS error, 'There was a problem adding your application.' AS msg;
+      END IF;
+        
+   END IF;
+END $$
+
+-- -------------------------------------------------------
+DROP PROCEDURE IF EXISTS App_Application_Emails_To_Send $$
+CREATE PROCEDURE App_Application_Emails_To_Send()
+BEGIN
+   DECLARE enow DATETIME DEFAULT NOW();
+
+   SELECT id, email, code
+     FROM Application
+    WHERE emailed IS NULL
+      AND expires > enow;
+END $$
+
+-- ----------------------------------------------------
+DROP PROCEDURE IF EXISTS App_Application_Emails_Sent $$
+CREATE PROCEDURE App_Application_Emails_Sent(emails_send TEXT)
+BEGIN
+   DECLARE dnow DATETIME DEFAULT NOW();
+
+   CALL ssys_make_SFW_IntTable_from_list(ids_sent);
+
+   UPDATE Application
+      SET emailed = dnow
+    WHERE id IN (SELECT val FROM SFW_IntTable);
+
+   DROP TABLE SFW_IntTable;
+END $$
+
+-- --------------------------------------------------
+DROP PROCEDURE IF EXISTS App_User_Application_Confirm $$
+CREATE PROCEDURE App_User_Application_Confirm(id INT UNSIGNED,
+                                              email VARCHAR(128),
+                                              code CHAR(20),
+                                              password VARCHAR(30))
+BEGIN
+   DECLARE user_id INT UNSIGNED;
+   DECLARE acount INT UNSIGNED;
+
+   SELECT COUNT(*) INTO acount
+     FROM Application a
+    WHERE a.id = id
+      AND a.email = email
+      AND a.code = code;
+
+   IF acount = 1 THEN
+      INSERT INTO User(email)
+      SELECT a.email
+        FROM Application a
+       WHERE a.id = id;
+
+      IF ROW_COUNT() > 0 THEN
+         SELECT LAST_INSERT_ID() INTO user_id;
+         CALL App_Internal_User_Password_Set(user_id, password);
+         CALL App_Session_Initialize(user_id);
+
+         DELETE FROM a
+          USING Application AS a
+          WHERE a.id = id;
+
+         SELECT 0 AS error;
+      ELSE
+         SELECT 1 AS error, 'Failed to add user record.' AS msg;
+      END IF;
+   ELSE
+      SELECT 1 AS error, 'Unrecognized registration credentials.' AS msg;
+   END IF;
+END $$
+
+
 
 DELIMITER ;

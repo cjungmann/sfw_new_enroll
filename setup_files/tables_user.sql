@@ -1,3 +1,14 @@
+CREATE TABLE IF NOT EXISTS Application
+(
+   id      INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+   email   VARCHAR(128) UNIQUE,
+   expires DATETIME,
+   code    CHAR(20),
+   emailed DATETIME,
+
+   INDEX(email)
+);
+
 CREATE TABLE IF NOT EXISTS User
 (
    -- fundamental fields to track user

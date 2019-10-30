@@ -7,6 +7,12 @@ $session-type        : establish
 $test_authorized     : App_Session_Confirm
 $jump-not-authorized : Login.srm
 
+$shared : nav_to_existing
+   navigation
+      target
+         label : Login to Existing User
+         url   : ?login
+
 $shared : result_jumps
    xml-stylesheet : jump.xsl
    result
@@ -25,6 +31,9 @@ login
       target
          label : Register as New User
          url   : ?register
+      target
+         label : Apply for Account
+         url   : ?apply
       target
          label : Recover Password
          url   : ?req_rescue
@@ -46,10 +55,7 @@ register
    schema-proc  : App_User_Register
    form-action  : ?register_submit
    title        : Register as New User
-   navigation
-      target
-         label : Log into Existing User
-         url   : ?login
+   siblings     : $nav_to_existing
    schema
       field : email
       field : password
@@ -59,6 +65,53 @@ register_submit
    type           : form-submit
    procedure      : App_User_Register
    siblings       : $result_jumps
+
+# The next four response modes support a two-step registration,
+# where the User record is not created until the user confirms
+# the application through an email response.
+apply
+   type        : form-page
+   schema-proc : App_User_Application
+   form-action : ?apply_submit
+   title       : Application for New Account
+   siblings    : $nav_to_existing
+
+apply_submit
+   type           : form-submit
+   procedure      : App_User_Application
+   xml-stylesheet : jump.xsl
+   result
+      type : jumps
+      jumps
+         jump0 : wait_for_email.htm
+         jump1 : ?login
+
+confirm_app
+   type        : form-page
+   schema-proc : App_User_Application_Confirm
+   form-action : ?confirm_app_submit
+   title       : Confirm Application
+   qstring     : reflect    # Fill fields from URL
+   siblings    : $nav_to_existing
+   schema
+      field : id
+         hidden : true
+      field : email
+         hidden : true
+      field : code
+         hidden : true
+      field : password
+         type : password
+
+confirm_app_submit
+   type           : form-submit
+   procedure      : App_User_Application_Confirm
+   xml-stylesheet : jump.xsl
+   result
+      type : jumps
+      jumps
+         jump0 : Home.srm
+         jump1 : ?login
 
 # This response mode is for test scripts to confirm login status.
 login_test
