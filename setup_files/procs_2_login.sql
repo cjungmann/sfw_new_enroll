@@ -288,10 +288,12 @@ CREATE PROCEDURE App_Application_Emails_To_Send()
 BEGIN
    DECLARE enow DATETIME DEFAULT NOW();
 
+   DELETE FROM Application
+     WHERE expires < enow;
+
    SELECT id, email, code
      FROM Application
-    WHERE emailed IS NULL
-      AND expires > enow;
+    WHERE emailed IS NULL;
 END $$
 
 -- ----------------------------------------------------
