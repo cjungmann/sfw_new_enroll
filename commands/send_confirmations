@@ -191,10 +191,10 @@ if [ $? -eq 0 ]; then
             for ARecord in "${Applications[@]}"; do
                 process_application "$ARecord"
             done
+            update_mysql_with_sent_confirmations
         else
             echo "$Indent SCRIPT FAILURE: no email 'From' address."
         fi
-
     fi
 else
     echo "($DateStr) SCRIPT FAILURE: $BASH::get_applications returned an error."
