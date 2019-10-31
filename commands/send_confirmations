@@ -76,7 +76,7 @@ add_to_sent_rescues()
     fi
 }
 
-process_rescue()
+process_application()
 {
     local IFS="$MFS"
     local -a fields=( $1 )
@@ -147,29 +147,18 @@ process_rescue()
         make_html
           )
 
-     echo "$payload" | msmtp --file=./msmtprc -- "${email}"
+    echo "$payload" | msmtp --file=./msmtprc -- "${email}"
 
     add_to_sent_rescues "$id"
+
+    echo "$Indent ${email} sent"
 }
 
-update_mysql_with_sent_rescues()
+update_mysql_with_sent_confirmations()
 {
-    local -a rescues=( $Sent_Rescues )
+    local -a ap_ids=( $Sent_Applications )
     local IFS=$','
-    echo "CALL App_Password_Rescues_Sent('${rescues[*]}')"
-    mysql "${DBase}" -BN -e "CALL App_Password_Rescues_Sent('${rescues[*]}')"
-}
-
-send_emails()
-{
-    local -a records
-    local record
-
-    records=( $( get_applications ) )
-
-    for record in "${records[@]}"; do
-        process_rescue "$record"
-    done
+    mysql "${DBase}" -BN -e "CALL App_Application_Emails_Sent('${ap_ids[*]}')"
 }
 
 #########################
@@ -182,13 +171,32 @@ declare config="msmtprc"
 declare MRS=$'\n'  # should be newline unless 
 declare MFS=$'|'   # can't be space, tab or newline
 
+declare Indent="   "
+
 declare Sent_Applications
 declare From_Address
+declare DateStr=$( date --iso-8601 )
 
-From_Address=$( get_from_address )
-if [ "$?" -eq 0 ]; then
-    echo "From address is [32;1m$From_Address[m"
+declare -a Applications
+declare ARecord
+
+Applications=( $( get_applications ) )
+if [ $? -eq 0 ]; then
+    declare -i acount="${#Applications[@]}"
+    if [ "$acount" -gt 0 ]; then
+        echo "($DateStr) SCRIPT RUN: $BASH processing $acount applications."
+
+        From_Address=$( get_from_address )
+        if [ "$?" -eq 0 ]; then
+            for ARecord in "${Applications[@]}"; do
+                process_application "$ARecord"
+            done
+        else
+            echo "$Indent SCRIPT FAILURE: no email 'From' address."
+        fi
+
+    fi
+else
+    echo "($DateStr) SCRIPT FAILURE: $BASH::get_applications returned an error."
 fi
 
-send_emails
-update_mysql_with_sent_rescues
